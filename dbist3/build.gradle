@@ -1,0 +1,27 @@
+plugins {
+    id 'java'
+}
+
+group 'org.dbist'
+version '3.0.0'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile("javax.servlet:servlet-api:2.5")
+    compile("org.springframework:spring-jdbc:4.3.6.RELEASE")
+    compile("org.springframework:spring-context-support:4.3.6.RELEASE")
+    compile("org.aspectj:aspectjweaver:1.8.10")
+    compile("org.javassist:javassist:3.21.0-GA")
+    compile("org.apache.velocity:velocity:1.7")
+    compile("net.sf.common-util:common-util:1.0.17")
+    compile("commons-dbcp:commons-dbcp:1.4")
+    compile("commons-collections:commons-collections:3.2.2")
+    compile("com.fasterxml.jackson.core:jackson-annotations:2.8.6")
+
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
