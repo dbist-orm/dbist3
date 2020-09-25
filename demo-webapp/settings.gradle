@@ -1,0 +1,2 @@
+include ':dbist3'
+project(':dbist3').projectDir = new File('../dbist3')
