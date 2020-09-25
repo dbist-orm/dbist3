@@ -24,8 +24,9 @@ public class CodeDetail {
     @Column(length = 50, nullable = false)
     private String id;
 
+    @PrimaryKey
     @Column(length = 50, nullable = false)
-    private String groupId;
+    private String parentId;
 
     @Column(length = 50, nullable = false)
     private String name;
