@@ -16,7 +16,7 @@ import static org.dbist.annotation.GenerationRule.UUID;
 @Data
 @Accessors(chain = true)
 @Table(name = "tb_user", idStrategy = UUID, indexes = {
-    @Index(name = "ix_user_0", columnList = "title")
+    @Index(name = "ix_user_0", columnList = "name")
 })
 public class User {
 

@@ -5,8 +5,9 @@
       <profile default="true" name="Default" enabled="true" />
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="dbist3.main" target="1.8" />
-      <module name="dbist3.test" target="1.8" />
+      <module name="demo-webapp.dbist3.main" target="1.8" />
+      <module name="demo-webapp.dbist3.test" target="1.8" />
+      <module name="demo-webapp.main" target="1.8" />
       <module name="demo-webapp.test" target="1.8" />
     </bytecodeTargetLevel>
   </component>

@@ -2,11 +2,15 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/com.dbist.demo-webapp.test.iml" filepath="$PROJECT_DIR$/.idea/modules/com.dbist.demo-webapp.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/dbist3.iml" filepath="$PROJECT_DIR$/.idea/dbist3.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dbist3.main.iml" filepath="$PROJECT_DIR$/.idea/modules/dbist3.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dbist3.test.iml" filepath="$PROJECT_DIR$/.idea/modules/dbist3.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-319131749/demo-webapp.dbist3.main.iml" filepath="$PROJECT_DIR$/.idea/modules/-319131749/demo-webapp.dbist3.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/-319131749/demo-webapp.dbist3.test.iml" filepath="$PROJECT_DIR$/.idea/modules/-319131749/demo-webapp.dbist3.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/demo-webapp.main.iml" filepath="$PROJECT_DIR$/.idea/modules/demo-webapp.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/demo-webapp.test.iml" filepath="$PROJECT_DIR$/.idea/modules/demo-webapp.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/org.dbist.dbist3.iml" filepath="$PROJECT_DIR$/.idea/modules/org.dbist.dbist3.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/org.dbist.dbist3.main.iml" filepath="$PROJECT_DIR$/.idea/modules/org.dbist.dbist3.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/org.dbist.dbist3.test.iml" filepath="$PROJECT_DIR$/.idea/modules/org.dbist.dbist3.test.iml" />
     </modules>
   </component>
 </project>

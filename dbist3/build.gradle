@@ -2,9 +2,6 @@ plugins {
     id 'java'
 }
 
-group 'org.dbist'
-version '3.0.0'
-
 sourceCompatibility = 1.8
 
 repositories {

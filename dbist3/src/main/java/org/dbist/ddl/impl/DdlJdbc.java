@@ -23,14 +23,6 @@ public class DdlJdbc extends AbstractDdl {
     private static final Logger logger = LoggerFactory.getLogger(DdlJdbc.class);
 
     /**
-     * 데이터 테이블 스페이스 사용 여부
-     */
-    private boolean useDataTBSpace = false;
-    /**
-     * 인덱스 테이블 스페이스 사용 여부
-     */
-    private boolean useIdxTBSpace = false;
-    /**
      * 데이터 테이블 스페이스 명
      */
     private String dataTBSpace;
@@ -41,20 +33,27 @@ public class DdlJdbc extends AbstractDdl {
 
     @Override
     public void setTableSpace(String dataTBSpace, String idxTBSpace) {
+        // 데이터 테이블 스페이스 사용 여부
+        boolean useDataTBSpace;
 
-        if (StringUtils.isEmpty(dataTBSpace)) this.useDataTBSpace = false;
-        else {
-            this.useDataTBSpace = true;
+        // 인덱스 테이블 스페이스 사용 여부
+        boolean useIdxTBSpace;
+
+        if (StringUtils.isEmpty(dataTBSpace)) {
+            useDataTBSpace = false;
+        } else {
+            useDataTBSpace = true;
             this.dataTBSpace = dataTBSpace;
         }
 
-        if (StringUtils.isEmpty(idxTBSpace)) this.useIdxTBSpace = false;
-        else {
-            this.useIdxTBSpace = true;
+        if (StringUtils.isEmpty(idxTBSpace)) {
+            useIdxTBSpace = false;
+        } else {
+            useIdxTBSpace = true;
             this.idxTBSpace = idxTBSpace;
         }
 
-        this.getDdlMapper().setTableSpace(this.useDataTBSpace, this.useIdxTBSpace);
+        this.getDdlMapper().setTableSpace(useDataTBSpace, useIdxTBSpace);
     }
 
     @Override
@@ -98,36 +97,38 @@ public class DdlJdbc extends AbstractDdl {
     @Override
     public String createTable(Class<?> entity) {
         Map<String, Object> tableInfoMap = getTableInfoMap(entity);
-        String tableName = (String) tableInfoMap.get("name");
-        boolean ignore = (boolean) tableInfoMap.get("ignoreDdl");
 
+        boolean ignore = (boolean) tableInfoMap.get("ignoreDdl");
         if (ignore) {
-            return "Skip create table - entity [" + entity.getClass().getName() + "]!";
+            return "Skip create table - entity [" + entity.getName() + "]!";
         }
 
+        String tableName = (String) tableInfoMap.get("name");
         if (tableName == null) {
             return "Table Name is empty";
         }
 
         if (this.isTableExist(tableName)) {
-            return new StringBuilder("Table [").append(tableName).append("] is already exist!").toString();
+            return "Table [" + tableName + "] is already exist!";
         }
 
         String sequenceName = null;
         StringJoiner primaryFields = new StringJoiner(",");
-        List<String> uniqueIndexFields = new ArrayList<String>();
-        List<Map<String, Object>> fieldInfoMap = getFieldAnnAtrInfoMap(entity);
-        List<Map<String, String>> columnAttrMapList = new ArrayList<Map<String, String>>();
+        List<String> uniqueIndexFields = new ArrayList<>();
+        List<Map<String, String>> columnAttrMapList = new ArrayList<>();
+
+        List<Map<String, Object>> fieldInfoMap = this.getFieldAnnAtrInfoMap(entity);
 
         for (Map<String, Object> attribute : fieldInfoMap) {
-            Map<String, String> colInfoMap = new HashMap<String, String>();
             String colName = (String) attribute.get("name");
             String seqName = (String) attribute.get("sequenceName");
             boolean nullable = ValueUtils.toBoolean(attribute.get("nullable"), true);
 
-            if (!tableName.equalsIgnoreCase("users") && colName.equalsIgnoreCase("domain_id")) {
-                nullable = false;
-            }
+//            if (!tableName.equalsIgnoreCase("user") && colName.equalsIgnoreCase("domain_id")) {
+//                nullable = false;
+//            }
+
+            Map<String, String> colInfoMap = new HashMap<>();
 
             // Set Sequence
             if (!ValueUtils.isEmpty(seqName)) {
@@ -151,18 +152,19 @@ public class DdlJdbc extends AbstractDdl {
             colInfoMap.put("name", colName);
             colInfoMap.put("nullable", nullable ? "" : "NOT NULL");
             colInfoMap.put("col_type", getDdlMapper().toDatabaseType(attribute));
+
             columnAttrMapList.add(colInfoMap);
         }
 
         Object indexInfo = tableInfoMap.get("indexes");
-        List<String> uniqueIndexList = new ArrayList<String>();
-        List<Map<String, Object>> indexList = new ArrayList<Map<String, Object>>();
+        List<String> uniqueIndexList = new ArrayList<>();
+        List<Map<String, Object>> indexList = new ArrayList<>();
 
         // @Table의 Unique Index정보 추출
         if (!ValueUtils.isEmpty(indexInfo)) {
             Index[] indexes = (Index[]) indexInfo;
             for (Index idx : indexes) {
-                Map<String, Object> indexMap = new HashMap<String, Object>();
+                Map<String, Object> indexMap = new HashMap<>();
                 boolean isUnique = idx.unique();
                 String columnList = idx.columnList();
 
@@ -181,7 +183,7 @@ public class DdlJdbc extends AbstractDdl {
         uniqueIndexFields.removeAll(uniqueIndexList);
         // Filed에 정의되어 있는 Unique정보를 Index에 추가
         for (String fieldName : uniqueIndexFields) {
-            Map<String, Object> uniqueIndexMap = new HashMap<String, Object>();
+            Map<String, Object> uniqueIndexMap = new HashMap<>();
             uniqueIndexMap.put("unique", true);
             uniqueIndexMap.put("name", "ix_" + tableName + "_on_" + fieldName);
             uniqueIndexMap.put("columnList", fieldName);
@@ -189,7 +191,7 @@ public class DdlJdbc extends AbstractDdl {
         }
 
         // Velocity PramMap
-        Map<String, Object> paramMap = new HashMap<String, Object>();
+        Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("account", this.getAccount());
         paramMap.put("tableName", tableName);
         paramMap.put("columns", columnAttrMapList);
@@ -225,7 +227,7 @@ public class DdlJdbc extends AbstractDdl {
         }
 
         if (!this.isTableExist(tableName)) {
-            return new StringBuilder("Table [").append(tableName).append("] is not exist!").toString();
+            return "Table [" + tableName + "] is not exist!";
         }
 
         String sequenceName = tableName + "_id_seq";
@@ -235,24 +237,28 @@ public class DdlJdbc extends AbstractDdl {
     @Override
     public String dropTable(String tableName, String sequenceName, List<String> indexNames) {
         if (!this.isTableExist(tableName)) {
-            return new StringBuilder("Table [").append(tableName).append("] is not exist!").toString();
+            return "Table [" + tableName + "] is not exist!";
         }
 
         String dropTableTemplate = this.getDdlMapper().dropTableTemplate();
-        Map<String, Object> paramMap = new HashMap<String, Object>();
+
+        Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("domain", this.dml.getDomain());
         paramMap.put("tableName", tableName);
         paramMap.put("sequenceName", sequenceName);
 
-        String result = this.executeDDL(tableName, dropTableTemplate, paramMap);
-        if (result != null) {
-            return result;
+        {
+            String result = this.executeDDL(tableName, dropTableTemplate, paramMap);
+            if (result != null) {
+                return result;
+            }
         }
 
         if (sequenceName != null && !sequenceName.equalsIgnoreCase("")) {
             String dropSequenceTemplate = this.getDdlMapper().dropSequenceTemplate();
             paramMap.put("sequenceName", sequenceName);
-            result = this.executeDDL(tableName, dropSequenceTemplate, paramMap);
+
+            String result = this.executeDDL(tableName, dropSequenceTemplate, paramMap);
             if (result != null) {
                 return result;
             }
@@ -261,7 +267,8 @@ public class DdlJdbc extends AbstractDdl {
         if (indexNames != null && !indexNames.isEmpty()) {
             String dropIndexTemplate = this.getDdlMapper().dropIndexTemplate();
             paramMap.put("indexes", indexNames);
-            result = this.executeDDL(tableName, dropIndexTemplate, paramMap);
+
+            String result = this.executeDDL(tableName, dropIndexTemplate, paramMap);
             if (result != null) {
                 return result;
             }
@@ -273,49 +280,58 @@ public class DdlJdbc extends AbstractDdl {
     @Override
     public String alterTable(String tableName, Map<String, List<Map<String, Object>>> columnsMap) {
         if (!this.isTableExist(tableName)) {
-            return new StringBuilder("Table [").append(tableName).append("] is not exist!").toString();
+            return "Table [" + tableName + "] is not exist!";
         }
 
-        Map<String, Object> paramMap = new HashMap<String, Object>();
+        Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("domain", this.dml.getDomain());
         paramMap.put("tableName", tableName);
-        String resultStr = null;
 
         List<Map<String, Object>> addColumns = columnsMap.get("addColumns");
         if (addColumns != null && !addColumns.isEmpty()) {
             String addColumnTemplate = getDdlMapper().addColumnTemplate();
             paramMap.put("addColumns", addColumns);
-            resultStr = this.executeDDL(tableName, addColumnTemplate, paramMap);
-        }
+            String result = this.executeDDL(tableName, addColumnTemplate, paramMap);
 
-        if (resultStr == null) {
-            List<Map<String, Object>> removeColumns = columnsMap.get("removeColumns");
-            if (removeColumns != null && !removeColumns.isEmpty()) {
-                String removeColumnTemplate = getDdlMapper().removeColumnTemplate();
-                paramMap.put("removeColumns", removeColumns);
-                resultStr = this.executeDDL(tableName, removeColumnTemplate, paramMap);
-            }
-
-            if (resultStr == null) {
-                List<Map<String, Object>> modifyColumns = columnsMap.get("modifyColumns");
-                if (modifyColumns != null && !modifyColumns.isEmpty()) {
-                    String modifyColumnTemplate = getDdlMapper().modifyColumnTemplate();
-                    paramMap.put("modifyColumns", modifyColumns);
-                    resultStr = this.executeDDL(tableName, modifyColumnTemplate, paramMap);
-                }
-
-                if (resultStr == null) {
-                    List<Map<String, Object>> nullableColumns = columnsMap.get("nullableColumns");
-                    if (nullableColumns != null && !nullableColumns.isEmpty()) {
-                        String nullableColumnTemplate = getDdlMapper().modifyNullableColumnTemplate();
-                        paramMap.put("nullableColumns", nullableColumns);
-                        resultStr = this.executeDDL(tableName, nullableColumnTemplate, paramMap);
-                    }
-                }
+            if (result != null) {
+                return result;
             }
         }
 
-        return resultStr;
+        List<Map<String, Object>> removeColumns = columnsMap.get("removeColumns");
+        if (removeColumns != null && !removeColumns.isEmpty()) {
+            String removeColumnTemplate = getDdlMapper().removeColumnTemplate();
+            paramMap.put("removeColumns", removeColumns);
+            String result = this.executeDDL(tableName, removeColumnTemplate, paramMap);
+
+            if (result != null) {
+                return result;
+            }
+        }
+
+        List<Map<String, Object>> modifyColumns = columnsMap.get("modifyColumns");
+        if (modifyColumns != null && !modifyColumns.isEmpty()) {
+            String modifyColumnTemplate = getDdlMapper().modifyColumnTemplate();
+            paramMap.put("modifyColumns", modifyColumns);
+            String result = this.executeDDL(tableName, modifyColumnTemplate, paramMap);
+
+            if (result != null) {
+                return result;
+            }
+        }
+
+        List<Map<String, Object>> nullableColumns = columnsMap.get("nullableColumns");
+        if (nullableColumns != null && !nullableColumns.isEmpty()) {
+            String nullableColumnTemplate = getDdlMapper().modifyNullableColumnTemplate();
+            paramMap.put("nullableColumns", nullableColumns);
+            String result = this.executeDDL(tableName, nullableColumnTemplate, paramMap);
+
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return null;
     }
 
     @Override
@@ -334,7 +350,7 @@ public class DdlJdbc extends AbstractDdl {
     public String getProcedureDef(String name) {
         String sql = getDdlMapper().getPprocedureDefTemplate();
 
-        Map<String, Object> paramMap = new HashMap<String, Object>();
+        Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("domain", Arrays.asList(StringUtils.tokenizeToStringArray(this.dml.getDomain().toUpperCase(), ",")));
         paramMap.put("name", name);
 
@@ -347,11 +363,12 @@ public class DdlJdbc extends AbstractDdl {
             if (values.size() == 1) {
                 procedureDef = values.get(0);
             } else {
-                StringBuffer appender = new StringBuffer();
+                StringBuilder appender = new StringBuilder();
                 for (String value : values) {
                     if (!value.isEmpty())
                         appender.append(value);
                 }
+
                 procedureDef = appender.toString();
             }
 
@@ -363,7 +380,7 @@ public class DdlJdbc extends AbstractDdl {
 
     @Override
     public String getCreateProcedureTemplate(String name) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("name", name);
 
         String sql = getDdlMapper().getCreatePprocedureTemplate();
@@ -408,7 +425,7 @@ public class DdlJdbc extends AbstractDdl {
             paramSql.append(type).append(",");
         }
 
-        Map<String, Object> paramMap = new HashMap<String, Object>();
+        Map<String, Object> paramMap = new HashMap<>();
         if (paramSql.length() > 0) {
             paramMap.put("paramTypes", paramSql.substring(0, paramSql.lastIndexOf(",")));
         }

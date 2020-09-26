@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,31 +84,46 @@ public abstract class AbstractDdl implements Ddl {
             TableCol tabColumn = new TableCol();
             tabColumn.setName(rs.getString("name"));
             tabColumn.setDataType(rs.getString("dataType"));
+
             String nullableStr = rs.getString("nullable");
-            Boolean nullable = (nullableStr != null && !nullableStr.equals("")
-                && (nullableStr.equalsIgnoreCase("yes") || nullableStr.equalsIgnoreCase("y") || nullableStr.equalsIgnoreCase("true") || nullableStr.equalsIgnoreCase("t")));
+            Boolean nullable = !ValueUtils.isEmpty(nullableStr) && ValueUtils.toBoolean(nullableStr);
+
             tabColumn.setNullable(nullable);
             tabColumn.setLength(rs.getInt("length"));
             // tabColumn.setComment(rs.getString("comment"));
+
             return tabColumn;
         }
     }
 
+    /**
+     * Table이 존재하는지 check를 위한 쿼리 - 에러가 발생하면 안 되고 테이블 존재 개수를 리턴해야 함
+     */
+    public abstract String tableCheckSql();
+
     public DdlMapper getDdlMapper() {
         if (this.ddlMapper == null) {
             String dbType = dml.getDbType();
-            if (dbType.equals(DbistConstants.POSTGRESQL)) {
-                this.ddlMapper = new DdlMapperPostgresql();
-            } else if (dbType.equals(DbistConstants.MYSQL)) {
-                this.ddlMapper = new DdlMapperMysql();
-            } else if (dbType.equals(DbistConstants.ORACLE)) {
-                this.ddlMapper = new DdlMapperOracle();
-            } else if (dbType.equals(DbistConstants.DB2)) {
-                this.ddlMapper = new DdlMapperDB2();
-            } else if (dbType.equals(DbistConstants.SQLSERVER)) {
-                this.ddlMapper = new DdlMapperSqlserver();
-            } else if (dbType.equals(DbistConstants.H2)) {
-                this.ddlMapper = new DdlMapperH2();
+
+            switch (dbType) {
+                case DbistConstants.POSTGRESQL:
+                    this.ddlMapper = new DdlMapperPostgresql();
+                    break;
+                case DbistConstants.MYSQL:
+                    this.ddlMapper = new DdlMapperMysql();
+                    break;
+                case DbistConstants.ORACLE:
+                    this.ddlMapper = new DdlMapperOracle();
+                    break;
+                case DbistConstants.DB2:
+                    this.ddlMapper = new DdlMapperDB2();
+                    break;
+                case DbistConstants.SQLSERVER:
+                    this.ddlMapper = new DdlMapperSqlserver();
+                    break;
+                case DbistConstants.H2:
+                    this.ddlMapper = new DdlMapperH2();
+                    break;
             }
         }
 
@@ -158,7 +174,7 @@ public abstract class AbstractDdl implements Ddl {
 
     @Override
     public List<TableIdx> getTableIndexes(Class<?> entityClass) {
-        List<TableIdx> indexList = new ArrayList<TableIdx>();
+        List<TableIdx> indexList = new ArrayList<>();
         Annotation tableAnn = AnnotationUtils.findAnnotation(entityClass, Table.class);
         if (tableAnn == null) {
             return indexList;
@@ -207,14 +223,11 @@ public abstract class AbstractDdl implements Ddl {
 
     /**
      * DB에 Table이 존재하는지 확인.
-     *
-     * @param tableName
-     * @return
      */
     public boolean isTableExist(String tableName) {
         String checkQuery = this.tableCheckSql();
 
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("domain", this.getDomain());
         params.put("tableName", tableName);
         params.put("owner", this.getAccount());
@@ -232,14 +245,13 @@ public abstract class AbstractDdl implements Ddl {
     @Override
     public List<String> getAllTables() {
         String query = this.getDdlMapper().getUserTables();
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("domain", this.getDomain());
         params.put("owner", this.getAccount());
 
         try {
             String script = dml.getPreprocessor().process(query, params);
-            List<String> list = this.dml.selectListBySql(script, new HashMap<String, Object>(), String.class, 0, 0);
-            return list;
+            return this.dml.selectListBySql(script, new HashMap<>(), String.class, 0, 0);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -247,19 +259,7 @@ public abstract class AbstractDdl implements Ddl {
     }
 
     /**
-     * Table이 존재하는지 check를 위한 쿼리 - 에러가 발생하면 안 되고 테이블 존재 개수를 리턴해야 함
-     *
-     * @return
-     */
-    public abstract String tableCheckSql();
-
-    /**
      * ddlTemplate, paramMap으로 ddl script를 생성하고 그 script를 실행
-     *
-     * @param tableName
-     * @param ddlTemplate
-     * @param paramMap
-     * @return
      */
     public String executeDDL(String tableName, String ddlTemplate, Map<String, Object> paramMap) {
         try {
@@ -273,7 +273,8 @@ public abstract class AbstractDdl implements Ddl {
         } catch (Exception e) {
             String message = e.getCause().getMessage();
             logger.error(message + "[" + tableName + "]");
-            return new StringBuilder(tableName).append(" : ").append(message).toString();
+
+            return tableName + " : " + message;
         }
 
         return null;
@@ -315,9 +316,6 @@ public abstract class AbstractDdl implements Ddl {
 
     /**
      * Entity와 Mapping되어있는 Table Name 가져오기 실행.
-     *
-     * @param entity
-     * @return
      */
     protected Map<String, Object> getTableInfoMap(Class<?> entity) {
         Annotation tableAnn = AnnotationUtils.findAnnotation(entity, Table.class);
@@ -330,31 +328,33 @@ public abstract class AbstractDdl implements Ddl {
 
     /**
      * Field의 '@Colum'에 대한 속정 정보 추출.
-     *
-     * @param clazz
-     * @return
      */
     protected List<Map<String, Object>> getFieldAnnAtrInfoMap(Class<?> clazz) {
         List<Map<String, Object>> fieldAnnAttrInfoMapList = new ArrayList<>();
         List<Field> fields = this.declaredFieldList(clazz);
 
         for (Field field : fields) {
-            Map<String, Object> fieldAnnAttrInfoMap = new HashMap<String, Object>();
-            Map<String, Object> colAnnInfoMap = new HashMap<String, Object>();
-            Map<String, Object> pkAnnInfoMap = new HashMap<String, Object>();
+            Map<String, Object> fieldAnnAttrInfoMap = new HashMap<>();
+            Map<String, Object> colAnnInfoMap = new HashMap<>();
+            Map<String, Object> pkAnnInfoMap = new HashMap<>();
 
             Annotation columnAnn = field.getAnnotation(Column.class);
             if (columnAnn != null) {
                 colAnnInfoMap = AnnotationUtils.getAnnotationAttributes(columnAnn);
+
+                String value = (String) colAnnInfoMap.get("name");
+                String fieldName = ValueUtils.isEmpty(value) ? field.getName() : value;
+                String column = ValueUtils.toDelimited(fieldName, '_');
+
+                colAnnInfoMap.put("name", column);
+
                 fieldAnnAttrInfoMap.putAll(colAnnInfoMap);
             }
 
             // PrimaryKey에 따른, Default Setting 적용.
             Annotation pkAnn = field.getAnnotation(PrimaryKey.class);
             if (pkAnn != null) {
-                String colName = (String) colAnnInfoMap.get("name");
-                String fieldName = (colName == null) ? field.getName() : colName;
-
+                String fieldName = (String) colAnnInfoMap.get("name");
                 pkAnnInfoMap.put("primaryKey", fieldName);
                 pkAnnInfoMap.put("name", fieldName);
                 pkAnnInfoMap.put("nullable", false);
@@ -378,22 +378,17 @@ public abstract class AbstractDdl implements Ddl {
 
     /**
      * Class에 정의되어 있는 Field 목록 추출.(부모 객체의 Field 포함)
-     *
-     * @param clazz
-     * @return
      */
-    protected List<Field> declaredFieldList(Class<?> clazz) {
-        List<Field> filedList = new ArrayList<Field>();
+    private List<Field> declaredFieldList(Class<?> clazz) {
+        List<Field> filedList = new ArrayList<>();
         Class<?> targetClass = clazz;
 
         do {
             Field[] fields = targetClass.getDeclaredFields();
-            for (Field field : fields) {
-                filedList.add(field);
-            }
+            Collections.addAll(filedList, fields);
 
             targetClass = targetClass.getSuperclass();
-        } while (targetClass != null && targetClass instanceof Object);
+        } while (targetClass != null);
 
         return filedList;
     }
