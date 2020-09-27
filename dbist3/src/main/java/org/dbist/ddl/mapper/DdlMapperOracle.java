@@ -9,8 +9,6 @@ import java.util.StringJoiner;
 
 import org.dbist.DbistConstants;
 import org.dbist.metadata.TableIdx;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.util.StringUtils;
 
@@ -29,9 +27,6 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
 
     boolean useDataTBSpace = false;
     boolean useIdxTBSpace = false;
-
-    @Autowired
-    Environment env;
 
     @Override
     public void setTableSpace(boolean useDataTBSpace, boolean useIdxTBSpace) {
@@ -134,8 +129,7 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
         Integer length = ValueUtils.toInteger(map.get("length"));
         String requiredType = String.valueOf(map.get("type"));
         String fieldType = (requiredType == null || requiredType.equalsIgnoreCase("null") || requiredType.equalsIgnoreCase("empty")) ? (String) map.get("fieldType") : requiredType;
-        String type = this.setColumnSize(fieldType, length);
-        return type;
+        return this.setColumnSize(fieldType, length);
     }
 
     private String setColumnSize(String fieldType, Integer length) {
@@ -145,25 +139,25 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
         if (length != null && length > 0 && length != 255) {
             columnSize = length.toString();
         } else {
-            if (type.equalsIgnoreCase(DbistConstants.COLUMN_TYPE_VARCHAR2)) {
-                columnSize = this.getStringFieldSize();
-            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_BOOLEAN)) {
-                columnSize = "1";
-            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_DATETIME)) {
-                columnSize = this.getDateTimeFieldSize();
-            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_TIMESTAMP)) {
-                columnSize = this.getTimeStampFieldSize();
-            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_DECIMAL)) {
-                columnSize = this.getDecimalFieldSize();
-            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_DOUBLE)) {
-                columnSize = this.getDoubleFieldSize();
-            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_FLOAT)) {
-                columnSize = this.getFloatFieldSize();
-            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_INT) || fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_INTEGER)) {
-                columnSize = this.getIntegerFieldSize();
-            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_LONG)) {
-                columnSize = this.getLongFieldSize();
-            }
+//            if (type.equalsIgnoreCase(DbistConstants.COLUMN_TYPE_VARCHAR2)) {
+//                columnSize = "255";
+//            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_BOOLEAN)) {
+//                columnSize = "1";
+//            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_DATETIME)) {
+//                columnSize = "6";
+//            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_TIMESTAMP)) {
+//                columnSize = "6";
+//            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_DECIMAL)) {
+//                columnSize = "15"
+//            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_DOUBLE)) {
+//                columnSize = "6";
+//            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_FLOAT)) {
+//                columnSize = this.getFloatFieldSize();
+//            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_INT) || fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_INTEGER)) {
+//                columnSize = this.getIntegerFieldSize();
+//            } else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_LONG)) {
+//                columnSize = this.getLongFieldSize();
+//            }
         }
 
         /*
@@ -175,7 +169,7 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
 
         String[] columnSizeArr = StringUtils.tokenizeToStringArray(columnSize, ",");
         Integer precision = Integer.parseInt(columnSizeArr[0]);
-        Integer scale = Integer.parseInt(columnSizeArr.length > 1 ? columnSizeArr[1] : this.getDecimalPoint());
+        Integer scale = Integer.parseInt(columnSizeArr.length > 1 ? columnSizeArr[1] : "3");
 
         // Number Type의 Max size 초과 시
         if (this.isNumberType(fieldType)) {
@@ -185,24 +179,15 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
 
         // 소수점 타입이 아닌 경우
         if (!this.isRealType(fieldType)) {
-            return type += String.format("(%s)", columnSize);
+            return type + String.format("(%s)", columnSize);
         }
 
         // 소수점 자릿수가 존재하지 않거나, 1보다 작을 경우
         if (scale == null || scale < 1) {
-            return type += String.format("(%s)", columnSize);
+            return type + String.format("(%s)", columnSize);
         }
 
-        // 소수점 자릿수가 존재할 경우
-        precision += scale;
-
-        if (precision > DbistConstants.COLUMN_NUMBER_MAX_SIZE) {
-            precision = DbistConstants.COLUMN_NUMBER_MAX_SIZE;
-        }
-
-        StringBuilder appender = new StringBuilder();
-        appender.append(columnSize).append(",").append(scale);
-        return type += String.format("(%s)", appender.toString());
+        return type + String.format("(%s)", columnSize + "," + scale);
     }
 
     @Override
@@ -216,7 +201,7 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
         else if (fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_DATETIME) || fieldType.equalsIgnoreCase(DbistConstants.FIELD_TYPE_TIMESTAMP))
             return DbistConstants.COLUMN_TYPE_TIMESTAMP;
 
-        List<String> numberTypeList = new ArrayList<String>();
+        List<String> numberTypeList = new ArrayList<>();
         numberTypeList.add(DbistConstants.FIELD_TYPE_BOOLEAN.toUpperCase());
         numberTypeList.add(DbistConstants.FIELD_TYPE_INT.toUpperCase());
         numberTypeList.add(DbistConstants.FIELD_TYPE_INTEGER.toUpperCase());
@@ -353,7 +338,7 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
 
     @Override
     public String getTableIndexSql(String domainName, String tableName) {
-        StringBuffer sql = new StringBuffer();
+        StringBuilder sql = new StringBuilder();
         sql.append("select")
             .append("	ui.table_name, ui.index_name, ui.uniqueness, uic.column_name, uic.descend ")
             .append("from")
@@ -407,7 +392,7 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
             tableIndex.setIndexFields(rs.getString("column_name"));
             String uniqueness = rs.getString("uniqueness");
             if (uniqueness != null) {
-                Boolean uniq = uniqueness.equalsIgnoreCase("UNIQUE");
+                boolean uniq = uniqueness.equalsIgnoreCase("UNIQUE");
                 tableIndex.setUnique(uniq);
             }
 
@@ -417,7 +402,7 @@ public class DdlMapperOracle extends DdlMapperAbstract implements DdlMapper {
 
     @Override
     public List<TableIdx> refineIndexList(List<TableIdx> indexes) {
-        List<TableIdx> newIndexes = new ArrayList<TableIdx>();
+        List<TableIdx> newIndexes = new ArrayList<>();
 
         for (TableIdx currentIdx : indexes) {
             if (currentIdx.getIndexName().toUpperCase().endsWith("_PKEY")) {
