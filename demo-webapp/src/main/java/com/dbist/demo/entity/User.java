@@ -40,8 +40,8 @@ public class User {
     private String updaterId;
 
     @Column(type = DATETIME)
-    private Date createdAt;
+    private Date createdAt = new Date();
 
     @Column(type = DATETIME)
-    private Date updatedAt;
+    private Date updatedAt = new Date();
 }

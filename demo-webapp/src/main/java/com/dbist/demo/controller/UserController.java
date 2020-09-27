@@ -41,7 +41,7 @@ public class UserController {
         return null;
     }
 
-    @GetMapping
+    @GetMapping(value = "/{id:.+}")
     public User findOne(@PathVariable String id) throws Exception {
         {
             User user = dml.select(User.class, "test");
@@ -69,11 +69,13 @@ public class UserController {
         list = new ArrayList<>();
 
         for (int i = 1; i <= 100; i++) {
-            new User()
+            User user = new User()
                 .setId("id-" + i)
                 .setName("name-" + i)
                 .setPassword("pass-" + i)
                 .setStatus("status-" + i);
+
+            list.add(user);
         }
 
         dml.insertBatch(list);

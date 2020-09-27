@@ -22,6 +22,7 @@ package org.dbist.annotation;
  * @since 2012. 2. 18. (version 1.0.0)
  */
 public class GenerationRule {
+
     public static final String NONE = "";
 
     /**
@@ -33,14 +34,4 @@ public class GenerationRule {
      * ID_GENERATION_STRATEGY : Increase Sequence
      */
     public static final String AUTO_INCREMENT = "auto-increment";
-
-    /**
-     * ID_GENERATION_STRATEGY : Union Unique Key
-     */
-    public static final String MEANINGFUL = "meaningful";
-
-    /**
-     * ID_GENERATION_STRATEGY : Complex Key - Primary Key Field Count is two or more
-     */
-    public static final String COMPLEX_KEY = "complex-key";
 }

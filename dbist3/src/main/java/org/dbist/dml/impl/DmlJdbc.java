@@ -98,10 +98,10 @@ public class DmlJdbc extends AbstractDml implements Dml {
     /**
      * Column Alias Rule
      */
-    public static final String COLUMNALIASRULE_DEFAULT = "default";
-    public static final String COLUMNALIASRULE_UPPERCASE = "uppercase";
-    public static final String COLUMNALIASRULE_LOWERCASE = "lowercase";
-    public static final String COLUMNALIASRULE_CAMELCASE = "camelcase";
+    private static final String COLUMNALIASRULE_DEFAULT = "default";
+    private static final String COLUMNALIASRULE_UPPERCASE = "uppercase";
+    private static final String COLUMNALIASRULE_LOWERCASE = "lowercase";
+    private static final String COLUMNALIASRULE_CAMELCASE = "camelcase";
     private static final List<String> COLUMNALIASRULE_LIST = ValueUtils.toList(COLUMNALIASRULE_DEFAULT, COLUMNALIASRULE_UPPERCASE,
         COLUMNALIASRULE_LOWERCASE, COLUMNALIASRULE_CAMELCASE);
 
@@ -115,7 +115,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
     }
 
     private String domain;
-    private List<String> domainList = new ArrayList<String>(2);
+    private List<String> domainList = new ArrayList<>(2);
     private String columnAliasRuleForMapKey;
     private int columnAliasRule;
     private JdbcOperations jdbcOperations;
@@ -147,23 +147,31 @@ public class DmlJdbc extends AbstractDml implements Dml {
         }
 
         if (getQueryMapper() == null) {
-            if (getDbType().equals(DbistConstants.MYSQL)) {
-                setQueryMapper(new QueryMapperMysql());
-                columnAliasRuleForMapKey = COLUMNALIASRULE_LOWERCASE;
-            } else if (getDbType().equals(DbistConstants.POSTGRESQL)) {
-                setQueryMapper(new QueryMapperPostgresql());
-            } else if (getDbType().equals(DbistConstants.ORACLE)) {
-                setQueryMapper(new QueryMapperOracle());
-                columnAliasRuleForMapKey = COLUMNALIASRULE_LOWERCASE;
-            } else if (getDbType().equals(DbistConstants.DB2)) {
-                setQueryMapper(new QueryMapperDb2());
-            } else if (getDbType().equals(DbistConstants.SQLSERVER)) {
-                setQueryMapper(new QueryMapperSqlserver());
-            } else if (getDbType().equals(DbistConstants.H2)) {
-                setQueryMapper(new QueryMapperH2());
-                columnAliasRuleForMapKey = COLUMNALIASRULE_LOWERCASE;
-            } else if (getDbType().equals(DbistConstants.CASSANDRA)) {
-                setQueryMapper(new QueryMapperCassandra());
+            switch (getDbType()) {
+                case DbistConstants.MYSQL:
+                    setQueryMapper(new QueryMapperMysql());
+                    columnAliasRuleForMapKey = COLUMNALIASRULE_LOWERCASE;
+                    break;
+                case DbistConstants.POSTGRESQL:
+                    setQueryMapper(new QueryMapperPostgresql());
+                    break;
+                case DbistConstants.ORACLE:
+                    setQueryMapper(new QueryMapperOracle());
+                    columnAliasRuleForMapKey = COLUMNALIASRULE_LOWERCASE;
+                    break;
+                case DbistConstants.DB2:
+                    setQueryMapper(new QueryMapperDb2());
+                    break;
+                case DbistConstants.SQLSERVER:
+                    setQueryMapper(new QueryMapperSqlserver());
+                    break;
+                case DbistConstants.H2:
+                    setQueryMapper(new QueryMapperH2());
+                    columnAliasRuleForMapKey = COLUMNALIASRULE_LOWERCASE;
+                    break;
+                case DbistConstants.CASSANDRA:
+                    setQueryMapper(new QueryMapperCassandra());
+                    break;
             }
         }
 
@@ -324,7 +332,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
     }
 
     private <T> List<Map<String, ?>> toParamMapList(Table table, List<T> list, String... fieldNames) throws Exception {
-        List<Map<String, ?>> paramMapList = new ArrayList<Map<String, ?>>();
+        List<Map<String, ?>> paramMapList = new ArrayList<>();
         for (T data : list)
             paramMapList.add(toParamMap(table, data, fieldNames));
         return paramMapList;
@@ -460,7 +468,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
         try {
             query.setLock(null);
             if (ValueUtils.isEmpty(query.getGroup())) {
-                appendFromWhere(table, query, buf, paramMap, table.containsLinkedTable() ? new HashMap<String, Column>() : null);
+                appendFromWhere(table, query, buf, paramMap, table.containsLinkedTable() ? new HashMap<>() : null);
             } else {
                 buf.append(" from (");
                 appendSelectSql(buf, paramMap, table, query, true, true);
@@ -688,7 +696,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
             final long _limit = limit;
             list = this.namedParameterJdbcOperations.query(sql, paramMap, new ResultSetExtractor<List<T>>() {
                 public List<T> extractData(ResultSet rs) throws SQLException, DataAccessException {
-                    List<T> list = new ArrayList<T>();
+                    List<T> list = new ArrayList<>();
                     for (int i = 0; i < _offset; i++) {
                         if (rs.next())
                             continue;
@@ -715,8 +723,8 @@ public class DmlJdbc extends AbstractDml implements Dml {
         return super.toPkQuery(obj.getClass(), obj);
     }
 
-    private static Map<Class<?>, Map<String, Field>> classFieldCache = new ConcurrentHashMap<Class<?>, Map<String, Field>>();
-    private static Map<Class<?>, Map<String, Field>> classSubFieldCache = new ConcurrentHashMap<Class<?>, Map<String, Field>>();
+    private static Map<Class<?>, Map<String, Field>> classFieldCache = new ConcurrentHashMap<>();
+    private static Map<Class<?>, Map<String, Field>> classSubFieldCache = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
     private <T> T newInstance(ResultSet rs, Class<T> clazz, Table table) throws SQLException {
@@ -729,7 +737,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
         if (classFieldCache.containsKey(clazz) && subFieldCache != null) {
             fieldCache = classFieldCache.get(clazz);
         } else {
-            fieldCache = new ConcurrentHashMap<String, Field>();
+            fieldCache = new ConcurrentHashMap<>();
             classFieldCache.put(clazz, fieldCache);
             subFieldCache = null;
         }
@@ -791,7 +799,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
                                 field = null;
                             } else {
                                 if (subFieldCache == null) {
-                                    subFieldCache = new ConcurrentHashMap<String, Field>();
+                                    subFieldCache = new ConcurrentHashMap<>();
                                     classSubFieldCache.put(clazz, subFieldCache);
                                 }
                                 subFieldCache.put(name, subField);
@@ -1383,7 +1391,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
             throw new DbistRuntimeException(column.getField().toString() + " value is null.");
         }
 
-        List<Object> newRightOperand = new ArrayList<Object>(rightOperand.size());
+        List<Object> newRightOperand = new ArrayList<>(rightOperand.size());
 
         if (!filter.isCaseSensitive() && CASECHECK_TYPELIST.contains(fieldType)) {
             for (Object ro : rightOperand) {
@@ -1464,7 +1472,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
                                       int maxResultSize) throws Exception {
         ValueUtils.assertNotEmpty("ql", ql);
         ValueUtils.assertNotEmpty("requiredType", requiredType);
-        paramMap = paramMap == null ? new HashMap<String, Object>() : paramMap;
+        paramMap = paramMap == null ? new HashMap<>() : paramMap;
         ql = ql.trim();
         if (getPreprocessor() != null)
             ql = getPreprocessor().process(ql, paramMap);
@@ -1497,7 +1505,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
             if (!(value instanceof Character))
                 continue;
             if (charKeyList == null)
-                charKeyList = new ArrayList<String>();
+                charKeyList = new ArrayList<>();
             charKeyList.add(key);
         }
         if (charKeyList == null)
@@ -1509,7 +1517,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
     }
 
     public int selectSizeByQl(String ql, Map<String, ?> paramMap) throws Exception {
-        paramMap = paramMap == null ? new HashMap<String, Object>() : paramMap;
+        paramMap = paramMap == null ? new HashMap<>() : paramMap;
 
         String lowerQl = ql.toLowerCase();
         int orderByIndex = lowerQl.lastIndexOf("order by");
@@ -1581,7 +1589,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
         Lock lock = query.getLock();
         try {
             query.setLock(null);
-            appendFromWhere(table, query, buf, paramMap, table.containsLinkedTable() ? new HashMap<String, Column>() : null);
+            appendFromWhere(table, query, buf, paramMap, table.containsLinkedTable() ? new HashMap<>() : null);
         } finally {
             query.setLock(lock);
 
@@ -1592,7 +1600,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
 
     public int executeByQl(String ql, Map<String, ?> paramMap) throws Exception {
         ValueUtils.assertNotEmpty("ql", ql);
-        paramMap = paramMap == null ? new HashMap<String, Object>() : paramMap;
+        paramMap = paramMap == null ? new HashMap<>() : paramMap;
         ql = ql.trim();
         if (getPreprocessor() != null)
             ql = getPreprocessor().process(ql, paramMap);
@@ -1687,7 +1695,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
         this.queryMapper = queryMapper;
     }
 
-    private Map<String, Class<?>> classByTableNameCache = new ConcurrentHashMap<String, Class<?>>();
+    private Map<String, Class<?>> classByTableNameCache = new ConcurrentHashMap<>();
 
     public Class<?> getClass(String tableName) {
         final String _name = tableName.toLowerCase();
@@ -1736,7 +1744,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
     private static final Map<String, CtClass> CTCLASS_BY_DBDATATYPE_MAP;
 
     static {
-        CTCLASS_BY_DBDATATYPE_MAP = new HashMap<String, CtClass>();
+        CTCLASS_BY_DBDATATYPE_MAP = new HashMap<>();
         ClassPool pool = ClassPool.getDefault();
         try {
             CTCLASS_BY_DBDATATYPE_MAP.put("number", pool.get(BigDecimal.class.getName()));
@@ -1767,7 +1775,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
         return ClassPool.getDefault().getCtClass(String.class.getName());
     }
 
-    private Map<Class<?>, Table> tableByClassCache = new ConcurrentHashMap<Class<?>, Table>();
+    private Map<Class<?>, Table> tableByClassCache = new ConcurrentHashMap<>();
 
     public Table getTable(Object obj) {
         final Class<?> clazz = obj instanceof Class ? (Class<?>) obj : obj.getClass();
@@ -1804,6 +1812,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
                 String simpleName = clazz.getSimpleName();
                 String[] tableNameCandidates = ValueUtils.isEmpty(table.getName()) ? new String[]{ValueUtils.toDelimited(simpleName, '_', false),
                     ValueUtils.toDelimited(simpleName, '_', true), simpleName.toLowerCase()} : new String[]{table.getName()};
+
                 checkAndPopulateDomainAndName(table, tableNameCandidates);
 
                 // Columns
@@ -1826,32 +1835,39 @@ public class DmlJdbc extends AbstractDml implements Dml {
         if (sql == null)
             throw new IllegalArgumentException(ValueUtils.populate(MSG_QUERYNOTFOUND,
                 ValueUtils.toMap("queryName: number of table", "dbdType:" + getDbType())));
+
         String vsql = getQueryCountView();
         boolean checkView = !ValueUtils.isEmpty(vsql) && !sql.equals(vsql);
 
         List<String> domainNameList = ValueUtils.isEmpty(table.getDomain()) ? this.domainList : ValueUtils.toList(table.getDomain());
 
         boolean populated = false;
+
         for (String domainName : domainNameList) {
             domainName = domainName.toLowerCase();
             String _sql = StringUtils.replace(sql, "${domain}", toFirstDomainName(domainName));
             String _vsql = checkView ? StringUtils.replace(vsql, "${domain}", toFirstDomainName(domainName)) : null;
+
             for (String tableName : tableNameCandidates) {
                 if (jdbcOperations.queryForObject(_sql, Integer.class, tableName) > 0) {
                     table.setDomain(domainName);
                     table.setName(tableName);
                     table.setType("table");
+
                     populated = true;
                     break;
                 }
+
                 if (checkView && jdbcOperations.queryForObject(_vsql, Integer.class, tableName) > 0) {
                     table.setDomain(domainName);
                     table.setName(tableName);
                     table.setType("view");
+
                     populated = true;
                     break;
                 }
             }
+
             if (populated)
                 break;
         }
@@ -1870,7 +1886,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
 
         sql = StringUtils.replace(sql, "${domain}", toFirstDomainName(table.getDomain()));
 
-        List<String> pkNameList = new ArrayList<String>();
+        List<String> pkNameList = new ArrayList<>();
         List<String> pkNames = jdbcOperations.queryForList(sql, String.class, table.getName());
         for (String pk : pkNames) {
             String[] pks = StringUtils.tokenizeToStringArray(pk, ",");
@@ -1881,7 +1897,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
 
         table.setPkColumnNameList(pkNameList);
         if (ValueUtils.isEmpty(table.getPkColumnNameList())) {
-            List<String> list = new ArrayList<String>();
+            List<String> list = new ArrayList<>();
             for (Field field : ReflectionUtils.getFieldList(table.getClazz(), false)) {
                 if (field.getAnnotation(PrimaryKey.class) == null)
                     continue;
@@ -1979,7 +1995,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
                     table.getValueGeneratorByFieldMap().put(field, getValueGenerator(columnAnn.generator()));
             }
             if (tabColumn == null) {
-                List<String> columnNameCandidates = new ArrayList<String>(3);
+                List<String> columnNameCandidates = new ArrayList<>(3);
                 String candidate1 = ValueUtils.toDelimited(field.getName(), '_').toLowerCase();
                 columnNameCandidates.add(candidate1);
                 String candidate2 = ValueUtils.toDelimited(field.getName(), '_', true);
@@ -1988,7 +2004,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
                 String candidate3 = field.getName().toLowerCase();
                 if (!columnNameCandidates.contains(candidate3))
                     columnNameCandidates.add(candidate3);
-                Set<String> checkedSet = new HashSet<String>();
+                Set<String> checkedSet = new HashSet<>();
                 for (String columnName : columnNameCandidates) {
                     if (checkedSet.contains(columnName))
                         continue;
@@ -2193,7 +2209,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
 
     @Override
     public void callProcedure(String name) throws Exception {
-        this.callProcedure(name, new HashMap<String, Object>());
+        this.callProcedure(name, new HashMap<>());
     }
 
     @Override
@@ -2214,7 +2230,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
 
     @Override
     public void callProcedureBySql(String sql) throws Exception {
-        this.callProcedureBySql(sql, new HashMap<String, Object>());
+        this.callProcedureBySql(sql, new HashMap<>());
     }
 
     @Override
@@ -2270,14 +2286,14 @@ public class DmlJdbc extends AbstractDml implements Dml {
         SimpleJdbcCall simpleJdbcCall = new SimpleJdbcCall(this.getDataSource());
         simpleJdbcCall.withProcedureName(name);
 
-        paramMap = paramMap == null ? new HashMap<String, Object>() : paramMap;
+        paramMap = paramMap == null ? new HashMap<>() : paramMap;
         MapSqlParameterSource inParams = new MapSqlParameterSource();
 
         if (paramMap != null && !paramMap.isEmpty()) {
             paramMap.forEach((k, v) -> inParams.addValue(k, v));
         }
 
-        List<T> list = new ArrayList<T>();
+        List<T> list = new ArrayList<>();
         list.add((T) simpleJdbcCall.execute(inParams));
 
         return list;
@@ -2289,7 +2305,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
 
         String sql = queryMapper.callProcedure(name, paramMap);
 
-        paramMap = paramMap == null ? new HashMap<String, Object>() : paramMap;
+        paramMap = paramMap == null ? new HashMap<>() : paramMap;
         sql = sql.trim();
 
         if (getPreprocessor() != null)
@@ -2304,7 +2320,7 @@ public class DmlJdbc extends AbstractDml implements Dml {
     @SuppressWarnings("rawtypes")
     public List<Map> getProcedureParameters(String name) throws Exception {
         String sql = queryMapper.procedureParameters(name);
-        Map<String, Object> param = new HashMap<String, Object>();
+        Map<String, Object> param = new HashMap<>();
         param.put("name", name);
         param.put("domain", Arrays.asList(StringUtils.tokenizeToStringArray(this.getDomain().toUpperCase(), ",")));
 

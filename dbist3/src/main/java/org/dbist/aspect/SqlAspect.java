@@ -25,6 +25,7 @@ import java.util.TreeSet;
 import org.apache.commons.collections.ComparatorUtils;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
 import org.dbist.util.SqlFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,55 +33,8 @@ import org.springframework.util.StringUtils;
 
 import net.sf.common.util.ValueUtils;
 
-/**
- * Functions as an aspect(AOP) related to SQL.<br>
- * Currently, it works as a printer of SQL logs.
- *
- * <p>
- * Examples
- *
- * <pre>
- * 1. Springframework Configuration
- * 	&lt;aop:config&gt;
- * 		&lt;aop:aspect order=&quot;2&quot; ref=&quot;sqlAspect&quot;&gt;
- * 			&lt;aop:around method=&quot;print&quot; pointcut=&quot;execution(* org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate.*(..))&quot; /&gt;
- * 		&lt;/aop:aspect&gt;
- * 	&lt;/aop:config&gt;
- * 	&lt;bean id=&quot;sqlAspect&quot; class=&quot;org.dbist.aspect.SqlAspect&quot;&gt;
- * 		&lt;property name=&quot;enabled&quot; value=&quot;true&quot; /&gt;
- * 		&lt;property name=&quot;prettyPrint&quot; value=&quot;true&quot; /&gt;
- * 		&lt;property name=&quot;combinedPrint&quot; value=&quot;false&quot; /&gt;
- * 	&lt;/bean&gt;
- *
- * 2. Logs
- * SQL:
- *     select
- *         owner,
- *         name
- *     from
- *         dbist.blog
- *     where
- *         name <> :name1
- *         and lower(description) like :description2
- *         and created_at is not null
- *         and owner in (
- *             :owner4
- *         )
- *     group by
- *         owner,
- *         name
- *     order by
- *         name asc
- * Parameters:
- * 	name1: test
- * 	description2: %the%
- * 	owner4: [steve, myjung, junguitar]
- * </pre>
- *
- * @author Steve M. Jung
- * @since 2012. 2. 23. (version 1.0.0)
- */
 public class SqlAspect {
+
     private static final Logger logger = LoggerFactory.getLogger(SqlAspect.class);
 
     private boolean enabled = true;
@@ -89,44 +43,12 @@ public class SqlAspect {
     private boolean includeElapsedTime;
     private SqlFormatter formatter = new SqlFormatter();
 
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public boolean isPrettyPrint() {
-        return prettyPrint;
-    }
-
-    public void setPrettyPrint(boolean prettyPrint) {
-        this.prettyPrint = prettyPrint;
-    }
-
-    public boolean isCombinedPrint() {
-        return combinedPrint;
-    }
-
-    public void setCombinedPrint(boolean combinedPrint) {
-        this.combinedPrint = combinedPrint;
-    }
-
-    public boolean isIncludeElapsedTime() {
-        return includeElapsedTime;
-    }
-
-    public void setIncludeElapsedTime(boolean includesElapsedTime) {
-        this.includeElapsedTime = includesElapsedTime;
-    }
-
+    @Around("execution(* org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate.*(..))")
     public Object print(final ProceedingJoinPoint point) throws Throwable {
         print(point.getArgs());
         return point.proceed();
     }
 
-    @SuppressWarnings("unchecked")
     private static final Comparator<String> COMPARATOR_REVERSED = ComparatorUtils.reversedComparator(ComparatorUtils.naturalComparator());
 
     private void print(Object[] args) {
@@ -138,7 +60,7 @@ public class SqlAspect {
         Object params = args.length > 1 && !ValueUtils.isEmpty(args[1]) ? args[1] : null;
 
         // SQL
-        StringBuffer buf = new StringBuffer("\r\nSQL: ");
+        StringBuilder buf = new StringBuilder("\r\nSQL: ");
         boolean combined = false;
 
         if (prettyPrint) {
@@ -149,9 +71,10 @@ public class SqlAspect {
             try {
                 sql = combine(sql, params);
                 combined = true;
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
+
         buf.append(sql);
 
         // Parameters
@@ -186,34 +109,94 @@ public class SqlAspect {
     private static String combine(String sql, Object params) {
         if (sql == null || params == null)
             return sql;
+
         if (params instanceof Map) {
-            @SuppressWarnings("unchecked")
             Map<String, ?> map = (Map<String, ?>) params;
-            Set<String> keySet = new TreeSet<String>(COMPARATOR_REVERSED);
+            Set<String> keySet = new TreeSet<>(COMPARATOR_REVERSED);
             keySet.addAll(map.keySet());
-            for (String key : keySet)
-                sql = StringUtils.replace(sql, ":" + key, toParamValue(map.get(key)));
+
+            for (String key : keySet) {
+                String value = toParamValue(map.get(key));
+                sql = StringUtils.replace(sql, ":" + key, value);
+            }
+
         } else if (params instanceof Object[]) {
-            for (Object param : (Object[]) params)
+            for (Object param : (Object[]) params) {
                 sql = sql.replaceFirst("?", toParamValue(param));
+            }
         }
+
         return sql;
     }
 
     private static String toParamValue(Object value) {
         if (value == null)
             return "null";
+
         if (value instanceof String)
             return "'" + StringEscapeUtils.escapeSql((String) value) + "'";
+
         if (value instanceof Date)
             return "'" + ValueUtils.toDateString((Date) value, ValueUtils.DATEPATTERN_DATETIME) + "'";
+
         if (value instanceof Collection) {
-            StringBuffer buf = new StringBuffer();
+            StringBuilder buf = new StringBuilder();
+
             int i = 0;
             for (Object item : (Collection<?>) value)
                 buf.append(i++ == 0 ? "" : ",").append(toParamValue(item));
+
             return buf.toString();
         }
+
         return ValueUtils.toString(value);
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(String enabled) {
+        this.setEnabled(ValueUtils.toBoolean(enabled, false));
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isPrettyPrint() {
+        return prettyPrint;
+    }
+
+    public void setPrettyPrint(String prettyPrint) {
+        this.setPrettyPrint(ValueUtils.toBoolean(prettyPrint, false));
+    }
+
+    public void setPrettyPrint(boolean prettyPrint) {
+        this.prettyPrint = prettyPrint;
+    }
+
+    public boolean isCombinedPrint() {
+        return combinedPrint;
+    }
+
+    public void setCombinedPrint(String combinedPrint) {
+        this.setCombinedPrint(ValueUtils.toBoolean(combinedPrint, false));
+    }
+
+    public void setCombinedPrint(boolean combinedPrint) {
+        this.combinedPrint = combinedPrint;
+    }
+
+    public boolean isIncludeElapsedTime() {
+        return includeElapsedTime;
+    }
+
+    public void setIncludeElapsedTime(String includesElapsedTime) {
+        this.setIncludeElapsedTime(ValueUtils.toBoolean(includesElapsedTime, false));
+    }
+
+    public void setIncludeElapsedTime(boolean includesElapsedTime) {
+        this.includeElapsedTime = includesElapsedTime;
     }
 }

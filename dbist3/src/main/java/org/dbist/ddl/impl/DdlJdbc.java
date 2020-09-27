@@ -124,10 +124,6 @@ public class DdlJdbc extends AbstractDdl {
             String seqName = (String) attribute.get("sequenceName");
             boolean nullable = ValueUtils.toBoolean(attribute.get("nullable"), true);
 
-//            if (!tableName.equalsIgnoreCase("user") && colName.equalsIgnoreCase("domain_id")) {
-//                nullable = false;
-//            }
-
             Map<String, String> colInfoMap = new HashMap<>();
 
             // Set Sequence
