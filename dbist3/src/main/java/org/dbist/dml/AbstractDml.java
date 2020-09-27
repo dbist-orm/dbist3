@@ -17,6 +17,7 @@ package org.dbist.dml;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +58,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         return dbType;
     }
 
-    public void setDbType(String dbType) {
+    protected void setDbType(String dbType) {
         this.dbType = dbType == null ? null : dbType.toLowerCase();
     }
 
@@ -109,41 +110,52 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         return list.get(0);
     }
 
-    protected Query toQuery(Table table, Object condition, String... fieldNames) throws Exception {
+    protected Query toQuery(Table table, Object condition, String... fieldNames) {
         if (condition instanceof Query)
             return (Query) condition;
+
         Query query = new Query();
         if (condition instanceof HttpServletRequest) {
             boolean byFieldName = fieldNames != null && fieldNames.length != 0;
             Set<String> fieldNameSet = byFieldName ? ValueUtils.toSet(fieldNames) : null;
+
             HttpServletRequest request = (HttpServletRequest) condition;
-            @SuppressWarnings("unchecked")
             Map<String, String[]> paramMap = request.getParameterMap();
+
             for (String key : paramMap.keySet()) {
                 if (byFieldName) {
                     if (!fieldNameSet.contains(key))
                         continue;
                     fieldNameSet.remove(key);
                 }
+
                 Field field = table.getField(key);
                 if (field == null)
                     continue;
+
                 String[] values = paramMap.get(key);
                 if (ValueUtils.isEmpty(values))
                     continue;
+
                 for (String value : values)
                     query.addFilter(key, value);
             }
+
             if (paramMap.containsKey("pageIndex"))
                 query.setPageIndex(ValueUtils.toInteger(request.getParameter("pageIndex"), 0));
+
             if (paramMap.containsKey("pageSize"))
                 query.setPageSize(ValueUtils.toInteger(request.getParameter("pageSize"), 0));
+
             if (paramMap.containsKey("firstResultIndex"))
                 query.setFirstResultIndex(ValueUtils.toInteger(request.getParameter("firstResultIndex"), 0));
+
             if (paramMap.containsKey("maxResultSize"))
                 query.setMaxResultSize(ValueUtils.toInteger(request.getParameter("maxResultSize"), 0));
+
             if (paramMap.containsKey("operator") && table.getField("operator") == null)
                 query.setOperator(request.getParameter("operator"));
+
         } else if (condition instanceof Filters) {
             ValueUtils.populate(condition, query);
         } else if (condition instanceof Filter) {
@@ -151,6 +163,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         } else {
             query.addFilterAll(condition, fieldNames);
         }
+
         return query;
     }
 
@@ -185,76 +198,66 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
                 query.addFilter(table.getPkFieldNames()[0], condition);
 
                 return query;
+            }
+
+            List<Object> list = new ArrayList<>();
+
+            if (condition instanceof List) {
+                if (ValueUtils.isEmpty(condition))
+                    throw new IllegalAccessException("Requested pk condition is empty.");
+
+                list = (List<Object>) condition;
             } else if (condition instanceof Object[]) {
                 if (ValueUtils.isEmpty(condition))
                     throw new IllegalAccessException("Requested pk condition is empty.");
 
                 Object[] array = (Object[]) condition;
-                if (ValueUtils.isPrimitive(array[0])) {
-                    String[] pkFieldNames = table.getPkFieldNames();
-                    if (ValueUtils.isEmpty(pkFieldNames))
-                        throw new DbistRuntimeException("Couln't find primary key of table " + table.getName());
+                Collections.addAll(list, array);
+            }
 
-                    int i = 0;
-                    int pkFieldSize = pkFieldNames.length;
+            if (!ValueUtils.isEmpty(list) && ValueUtils.isPrimitive(list.get(0))) {
+                String[] pkFieldNames = table.getPkFieldNames();
+                if (ValueUtils.isEmpty(pkFieldNames))
+                    throw new DbistRuntimeException("Couln't find primary key of table " + table.getName());
 
-                    for (Object item : array) {
-                        query.addFilter(pkFieldNames[i++], item);
+                int i = 0;
+                int pkFieldSize = pkFieldNames.length;
 
-                        if (i == pkFieldSize)
-                            break;
-                    }
-
-                    return query;
+                for (Object item : list) {
+                    query.addFilter(pkFieldNames[i++], item);
+                    if (i == pkFieldSize)
+                        break;
                 }
-            } else if (condition instanceof List) {
-                if (ValueUtils.isEmpty(condition))
-                    throw new IllegalAccessException("Requested pk condition is empty.");
 
-                List<?> list = (List<Object>) condition;
-                if (ValueUtils.isPrimitive(list.get(0))) {
-                    String[] pkFieldNames = table.getPkFieldNames();
-                    if (ValueUtils.isEmpty(pkFieldNames))
-                        throw new DbistRuntimeException("Couln't find primary key of table " + table.getName());
-
-                    int i = 0;
-                    int pkFieldSize = pkFieldNames.length;
-                    for (Object item : list) {
-                        query.addFilter(pkFieldNames[i++], item);
-                        if (i == pkFieldSize)
-                            break;
-                    }
-
-                    return query;
-                }
+                return query;
             }
 
             query = toQuery(table, condition, table.getPkFieldNames());
             return query;
         } finally {
-            //			query.setPageIndex(0);
-            //			query.setPageSize(2);
+            // query.setPageIndex(0);
+            // query.setPageSize(2);
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected static <T> T newInstance(Class<T> clazz) throws InstantiationException, IllegalAccessException {
         if (clazz.equals(Map.class))
             return (T) ListOrderedMap.class.newInstance();
+
         return clazz.newInstance();
     }
 
-    @SuppressWarnings("unchecked")
     public <T> T select(T data) throws Exception {
         ValueUtils.assertNotNull("data", data);
+
         Class<T> clazz = (Class<T>) data.getClass();
         Query query = toPkQuery(clazz, data);
         return select(selectList(clazz, query));
     }
 
-    @SuppressWarnings("unchecked")
     public <T> T selectWithLock(T data) throws Exception {
         ValueUtils.assertNotNull("data", data);
+
         Class<T> clazz = (Class<T>) data.getClass();
         Query query = toPkQuery(clazz, data);
         return select(selectListWithLock(clazz, query));
@@ -263,6 +266,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
     public <T> T select(Class<T> clazz, Object... pkCondition) throws Exception {
         ValueUtils.assertNotNull("clazz", clazz);
         ValueUtils.assertNotEmpty("pkCondition", pkCondition);
+
         Query query = toPkQuery(clazz, pkCondition);
         return select(selectList(clazz, query));
     }
@@ -270,6 +274,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
     public <T> T selectWithLock(Class<T> clazz, Object... pkCondition) throws Exception {
         ValueUtils.assertNotNull("clazz", clazz);
         ValueUtils.assertNotEmpty("pkCondition", pkCondition);
+
         Query query = toPkQuery(clazz, pkCondition);
         return select(selectListWithLock(clazz, query));
     }
@@ -277,6 +282,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
     public <T> T selectByCondition(Class<T> clazz, Object condition) throws Exception {
         ValueUtils.assertNotNull("clazz", clazz);
         ValueUtils.assertNotNull("condition", condition);
+
         return select(selectList(clazz, condition));
     }
 
@@ -284,11 +290,14 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         ValueUtils.assertNotNull("tableName", tableName);
         ValueUtils.assertNotNull("pkCondition", pkCondition);
         ValueUtils.assertNotNull("requiredType", requiredType);
+
         Class<?> clazz = getClass(tableName);
         Query query = toPkQuery(clazz, pkCondition);
         Object obj = select(selectList(clazz, query));
+
         if (obj == null)
             return null;
+
         String[] fieldNames = getFieldNames(query);
         return ValueUtils.populate(obj, newInstance(requiredType), fieldNames);
     }
@@ -297,11 +306,14 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         ValueUtils.assertNotNull("tableName", tableName);
         ValueUtils.assertNotNull("pkCondition", pkCondition);
         ValueUtils.assertNotNull("requiredType", requiredType);
+
         Class<?> clazz = getClass(tableName);
         Query query = toPkQuery(clazz, pkCondition);
         Object obj = select(selectListWithLock(clazz, query));
+
         if (obj == null)
             return null;
+
         String[] fieldNames = getFieldNames(query);
         return ValueUtils.populate(obj, newInstance(requiredType), fieldNames);
     }
@@ -310,11 +322,14 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         ValueUtils.assertNotNull("tableName", tableName);
         ValueUtils.assertNotNull("condition", condition);
         ValueUtils.assertNotNull("requiredType", requiredType);
+
         Class<?> clazz = getClass(tableName);
         Query query = toPkQuery(clazz, condition);
         Object obj = select(selectList(clazz, query));
+
         if (obj == null)
             return null;
+
         String[] fieldNames = getFieldNames(query);
         return ValueUtils.populate(obj, newInstance(requiredType), fieldNames);
     }
@@ -323,11 +338,14 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         ValueUtils.assertNotNull("tableName", tableName);
         ValueUtils.assertNotNull("condition", condition);
         ValueUtils.assertNotNull("requiredType", requiredType);
+
         Class<?> clazz = getClass(tableName);
         Query query = toPkQuery(clazz, condition);
         Object obj = select(selectListWithLock(clazz, query));
+
         if (obj == null)
             return null;
+
         String[] fieldNames = getFieldNames(query);
         return ValueUtils.populate(obj, newInstance(requiredType), fieldNames);
     }
@@ -335,6 +353,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
     public <T> T selectByConditionWithLock(Class<T> clazz, Object condition) throws Exception {
         ValueUtils.assertNotNull("clazz", clazz);
         ValueUtils.assertNotNull("condition", condition);
+
         return select(selectListWithLock(clazz, condition));
     }
 
@@ -353,21 +372,25 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
 
     public <T> Page<T> selectPage(Class<T> clazz, Query query) throws Exception {
         ValueUtils.assertNotNull("clazz", clazz);
+
         if (query == null)
             query = new Query();
-        Page<T> page = new Page<T>();
+
+        Page<T> page = new Page<>();
         page.setIndex(query.getPageIndex());
         page.setSize(query.getPageSize());
         page.setFirstResultIndex(query.getFirstResultIndex());
         page.setMaxResultSize(query.getMaxResultSize());
         page.setTotalSize(selectSize(clazz, query));
+
         if (page.getIndex() >= 0 && page.getSize() > 0 && page.getTotalSize() > 0)
             page.setLastIndex((page.getTotalSize() / page.getSize()) - (page.getTotalSize() % page.getSize() == 0 ? 1 : 0));
+
         page.setList(selectList(clazz, query));
         return page;
     }
 
-    public <T> int selectSize(String tableName, Object condition) throws Exception {
+    public int selectSize(String tableName, Object condition) throws Exception {
         ValueUtils.assertNotNull("tableName", tableName);
         return selectSize(getClass(tableName), condition);
     }
@@ -375,43 +398,57 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
     public <T> List<T> selectList(String tableName, Object condition, Class<T> requiredType) throws Exception {
         ValueUtils.assertNotNull("tableName", tableName);
         ValueUtils.assertNotNull("requiredType", requiredType);
+
+        List<T> list = new ArrayList<>();
         List<?> objList = selectList(getClass(tableName), condition);
-        List<T> list = new ArrayList<T>();
         String[] fieldNames = getFieldNames(condition);
+
         for (Object obj : objList)
             list.add(ValueUtils.populate(obj, newInstance(requiredType), fieldNames));
+
         return list;
     }
 
     public <T> List<T> selectListWithLock(String tableName, Object condition, Class<T> requiredType) throws Exception {
         ValueUtils.assertNotNull("tableName", tableName);
         ValueUtils.assertNotNull("requiredType", requiredType);
+
+        List<T> list = new ArrayList<>();
         List<?> objList = selectListWithLock(getClass(tableName), condition);
-        List<T> list = new ArrayList<T>();
         String[] fieldNames = getFieldNames(condition);
+
         for (Object obj : objList)
             list.add(ValueUtils.populate(obj, newInstance(requiredType), fieldNames));
+
         return list;
     }
 
     private String[] getFieldNames(Object condition) {
         if (!(condition instanceof Query))
             return new String[0];
+
         Query query = (Query) condition;
-        return ValueUtils.isEmpty(query.getSelect()) ? new String[0] : query.getSelect().toArray(new String[query.getSelect().size()]);
+        if (ValueUtils.isEmpty(query.getSelect())) {
+            return new String[0];
+        } else {
+            return query.getSelect().toArray(new String[query.getSelect().size()]);
+        }
     }
 
     public <T> Page<T> selectPage(String tableName, Query query, Class<T> requiredType) throws Exception {
         ValueUtils.assertNotNull("tableName", tableName);
         ValueUtils.assertNotNull("requiredType", requiredType);
-        Page<T> page = new Page<T>();
+
+        Page<T> page = new Page<>();
         page.setIndex(query.getPageIndex());
         page.setSize(query.getPageSize());
         page.setFirstResultIndex(query.getFirstResultIndex());
         page.setMaxResultSize(query.getMaxResultSize());
         page.setTotalSize(selectSize(tableName, query));
+
         if (page.getIndex() >= 0 && page.getSize() > 0 && page.getTotalSize() > 0)
             page.setLastIndex((page.getTotalSize() / page.getSize()) - (page.getTotalSize() % page.getSize() == 0 ? 1 : 0));
+
         page.setList(selectList(tableName, query, requiredType));
         return page;
     }
@@ -424,13 +461,11 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         return selectPageByQl(ql, paramMap, requiredType, pageIndex, pageSize, 0, 0);
     }
 
-    public <T> List<T> selectListByQlPath(String qlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize)
-        throws Exception {
+    public <T> List<T> selectListByQlPath(String qlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize) throws Exception {
         return selectListByQlPath(qlPath, paramMap, requiredType, pageIndex, pageSize, 0, 0);
     }
 
-    public <T> Page<T> selectPageByQlPath(String qlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize)
-        throws Exception {
+    public <T> Page<T> selectPageByQlPath(String qlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize) throws Exception {
         return selectPageByQlPath(qlPath, paramMap, requiredType, pageIndex, pageSize, 0, 0);
     }
 
@@ -442,8 +477,8 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         return selectListByQl(sql, paramMap, requiredType, pageIndex, pageSize, 0, 0);
     }
 
-    public <T> List<T> selectListBySql(String sql, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize, int firstResultIndex,
-                                       int maxResultSize) throws Exception {
+    public <T> List<T> selectListBySql(String sql, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize,
+                                       int firstResultIndex, int maxResultSize) throws Exception {
         return selectListByQl(sql, paramMap, requiredType, pageIndex, pageSize, firstResultIndex, maxResultSize);
     }
 
@@ -451,18 +486,22 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         return selectPageByQl(sql, paramMap, requiredType, pageIndex, pageSize, 0, 0);
     }
 
-    public <T> Page<T> selectPageByQl(String ql, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize, int firstResultIndex,
-                                      int maxResultSize) throws Exception {
-        paramMap = paramMap == null ? new HashMap<String, Object>() : paramMap;
-        Page<T> page = new Page<T>();
+    public <T> Page<T> selectPageByQl(String ql, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize,
+                                      int firstResultIndex, int maxResultSize) throws Exception {
+        if (paramMap == null)
+            paramMap = new HashMap<>();
+
+        Page<T> page = new Page<>();
         page.setIndex(pageIndex);
         page.setSize(pageSize);
         page.setFirstResultIndex(firstResultIndex);
         page.setMaxResultSize(maxResultSize);
         page.setList(selectListByQl(ql, paramMap, requiredType, pageIndex, pageSize, firstResultIndex, maxResultSize));
         page.setTotalSize(selectSizeByQl(ql, paramMap));
+
         if (page.getIndex() >= 0 && page.getSize() > 0 && page.getTotalSize() > 0)
             page.setLastIndex((page.getTotalSize() / page.getSize()) - (page.getTotalSize() % page.getSize() == 0 ? 1 : 0));
+
         return page;
     }
 
@@ -470,28 +509,28 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         return selectSizeByQl(sql, paramMap);
     }
 
-    public <T> Page<T> selectPageBySql(String sql, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize, int firstResultIndex,
-                                       int maxResultSize) throws Exception {
+    public <T> Page<T> selectPageBySql(String sql, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize,
+                                       int firstResultIndex, int maxResultSize) throws Exception {
         return selectPageByQl(sql, paramMap, requiredType, pageIndex, pageSize, firstResultIndex, maxResultSize);
     }
 
-    public <T> List<T> selectListBySqlPath(String sqlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize)
-        throws Exception {
+    public <T> List<T> selectListBySqlPath(String sqlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex,
+                                           int pageSize) throws Exception {
         return selectListByQlPath(sqlPath, paramMap, requiredType, pageIndex, pageSize, 0, 0);
     }
 
-    public <T> List<T> selectListBySqlPath(String sqlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize,
-                                           int firstResultIndex, int maxResultSize) throws Exception {
+    public <T> List<T> selectListBySqlPath(String sqlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex,
+                                           int pageSize, int firstResultIndex, int maxResultSize) throws Exception {
         return selectListByQlPath(sqlPath, paramMap, requiredType, pageIndex, pageSize, firstResultIndex, maxResultSize);
     }
 
-    public <T> Page<T> selectPageBySqlPath(String sqlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize)
-        throws Exception {
+    public <T> Page<T> selectPageBySqlPath(String sqlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex,
+                                           int pageSize) throws Exception {
         return selectPageByQlPath(sqlPath, paramMap, requiredType, pageIndex, pageSize, 0, 0);
     }
 
-    public <T> Page<T> selectPageBySqlPath(String sqlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex, int pageSize,
-                                           int firstResultIndex, int maxResultSize) throws Exception {
+    public <T> Page<T> selectPageBySqlPath(String sqlPath, Map<String, ?> paramMap, Class<T> requiredType, int pageIndex,
+                                           int pageSize, int firstResultIndex, int maxResultSize) throws Exception {
         return selectPageByQlPath(sqlPath, paramMap, requiredType, pageIndex, pageSize, firstResultIndex, maxResultSize);
     }
 
@@ -515,17 +554,19 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         insertBatch(toRequiredType(list, clazz), fieldNames);
     }
 
-    @SuppressWarnings("unchecked")
     private <T> T _insert(Class<T> clazz, Object data, String... fieldNames) throws Exception {
         ValueUtils.assertNotNull("clazz", clazz);
         ValueUtils.assertNotNull("data", data);
+
         if (data.getClass().isAssignableFrom(clazz)) {
             T obj = (T) data;
             insert(obj);
             return obj;
         }
+
         T obj = ValueUtils.populate(data, clazz.newInstance());
         getBean().insert(obj, fieldNames);
+
         return obj;
     }
 
@@ -548,22 +589,18 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
     protected ValueGenerator getValueGenerator(String generator) {
         if (ValueUtils.isEmpty(generator))
             return null;
+
         if (GenerationRule.UUID.equals(generator)) {
             try {
                 return UuidGenerator.class.newInstance();
-            } catch (InstantiationException e) {
-                throw new DbistRuntimeException(e);
-            } catch (IllegalAccessException e) {
+            } catch (InstantiationException | IllegalAccessException e) {
                 throw new DbistRuntimeException(e);
             }
         }
+
         try {
             return (ValueGenerator) ClassUtils.getClass(generator).newInstance();
-        } catch (InstantiationException e) {
-            throw new DbistRuntimeException(e);
-        } catch (IllegalAccessException e) {
-            throw new DbistRuntimeException(e);
-        } catch (ClassNotFoundException e) {
+        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
             throw new DbistRuntimeException(e);
         }
     }
@@ -572,6 +609,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         for (Field field : table.getValueGeneratorByFieldMap().keySet()) {
             if (!ValueUtils.isEmpty(field.get(data)))
                 continue;
+
             ValueGenerator gen = table.getValueGeneratorByFieldMap().get(field);
             gen.generate(data, table.getColumnByFieldName(field.getName()));
         }
@@ -580,6 +618,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
     protected <T> void doBeforeInsertBatch(List<T> list, Table table) throws Exception {
         if (ValueUtils.isEmpty(list) || table.getValueGeneratorByFieldMap().isEmpty())
             return;
+
         for (T data : list)
             doBeforeInsert(data, table);
     }
@@ -603,32 +642,38 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
     private <T> T _update(Class<T> clazz, Object data, String... fieldNames) throws Exception {
         ValueUtils.assertNotNull("clazz", clazz);
         ValueUtils.assertNotNull("data", data);
+
         if (data.getClass().equals(clazz)) {
-            @SuppressWarnings("unchecked")
             T obj = (T) data;
             update(obj, fieldNames);
             return obj;
         }
+
         T obj = select(clazz, data);
         if (obj == null) {
             Table table = getTable(data);
             throw new DataNotFoundException("Couldn't find data from table[" + table.getDomain() + "." + table.getName() + "]");
         }
+
         obj = ValueUtils.populate(data, obj, fieldNames);
         getBean().update(obj, fieldNames);
+
         return obj;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> List<T> toRequiredType(List<?> list, Class<T> requiredType, String... fieldNames) throws InstantiationException,
-        IllegalAccessException {
+    private static <T> List<T> toRequiredType(List<?> list, Class<T> requiredType, String... fieldNames)
+        throws InstantiationException, IllegalAccessException {
+
         if (ValueUtils.isEmpty(list))
             return (List<T>) list;
+
         if (list.get(0).getClass().equals(requiredType))
             return (List<T>) list;
-        List<T> dataList = new ArrayList<T>(list.size());
+
+        List<T> dataList = new ArrayList<>(list.size());
         for (Object obj : list)
             dataList.add(ValueUtils.populate(obj, newInstance(requiredType), fieldNames));
+
         return dataList;
     }
 
@@ -664,9 +709,10 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         _upsertBatch(list, fieldNames);
     }
 
-    public void _upsert(Object data, String... fieldNames) throws Exception {
+    private void _upsert(Object data, String... fieldNames) throws Exception {
         if (data == null)
             return;
+
         Query query = toPkQuery(data.getClass(), data);
         if (selectSize(data.getClass(), query) == 0)
             insert(data, fieldNames);
@@ -674,15 +720,17 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
             update(data, fieldNames);
     }
 
-    public void _upsertBatch(List<?> list, String... fieldNames) throws Exception {
-        List<Object> insertList = new ArrayList<Object>();
-        List<Object> updateList = new ArrayList<Object>();
+    private void _upsertBatch(List<?> list, String... fieldNames) throws Exception {
+        List<Object> insertList = new ArrayList<>();
+        List<Object> updateList = new ArrayList<>();
+
         for (Object data : list) {
             if (select(data) == null)
                 insertList.add(data);
             else
                 updateList.add(data);
         }
+
         insertBatch(insertList, fieldNames);
         updateBatch(updateList, fieldNames);
     }
@@ -728,6 +776,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         T data = select(clazz, pkCondition);
         if (data == null)
             return null;
+
         delete(data);
         return data;
     }
@@ -740,6 +789,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         T data = selectByCondition(clazz, condition);
         if (data == null)
             return null;
+
         delete(data);
         return data;
     }
@@ -756,6 +806,7 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
         Object data = selectByCondition(tableName, condition, getClass(tableName));
         if (data == null)
             return;
+
         delete(data);
     }
 
