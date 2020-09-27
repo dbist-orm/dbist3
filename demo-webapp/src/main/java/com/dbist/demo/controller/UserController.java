@@ -2,10 +2,12 @@ package com.dbist.demo.controller;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.dbist.ddl.Ddl;
 import org.dbist.dml.Dml;
 import org.dbist.dml.Page;
+import org.dbist.dml.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,15 +46,23 @@ public class UserController {
     @GetMapping(value = "/{id:.+}")
     public User findOne(@PathVariable String id) throws Exception {
         {
-            User user = dml.select(User.class, "test");
+            User user = dml.select(User.class, id);
+            Optional.ofNullable(user).ifPresent(v -> log.debug(v.toString()));
         }
         {
             User param = new User().setId(id);
             User user = dml.select(param);
+            Optional.ofNullable(user).ifPresent(v -> log.debug(v.toString()));
         }
         {
-            User user = dml.select("TM_USER", id, User.class);
+            User user = dml.select("TB_USER", id, User.class);
+            Optional.ofNullable(user).ifPresent(v -> log.debug(v.toString()));
         }
+        {
+            Query query = new Query();
+            dml.select(query);
+        }
+
 
         return null;
     }

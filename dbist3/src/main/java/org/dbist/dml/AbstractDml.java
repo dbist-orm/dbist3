@@ -156,61 +156,79 @@ public abstract class AbstractDml implements Dml, ApplicationContextAware, BeanN
 
     protected Query toPkQuery(Object obj, Object condition) throws Exception {
         Class<?> clazz;
-        if (obj instanceof Class)
+
+        if (obj instanceof Class) {
             clazz = (Class<?>) obj;
-        else if (obj instanceof String)
+        } else if (obj instanceof String) {
             clazz = getClass((String) obj);
-        else
+        } else {
             clazz = obj.getClass();
-        if (condition instanceof Object[] && ((Object[]) condition).length == 1)
+        }
+
+        if (condition instanceof Object[] && ((Object[]) condition).length == 1) {
             condition = ((Object[]) condition)[0];
+        }
+
         Query query = new Query();
+
         try {
             if (condition == null || condition instanceof Query)
                 return (Query) condition;
+
             Table table = getTable(clazz);
+
             if (ValueUtils.isPrimitive(condition)) {
                 String[] pkFieldNames = table.getPkFieldNames();
                 if (ValueUtils.isEmpty(pkFieldNames))
                     throw new DbistRuntimeException("Couln't find primary key of table " + table.getName());
+
                 query.addFilter(table.getPkFieldNames()[0], condition);
+
                 return query;
             } else if (condition instanceof Object[]) {
                 if (ValueUtils.isEmpty(condition))
                     throw new IllegalAccessException("Requested pk condition is empty.");
+
                 Object[] array = (Object[]) condition;
                 if (ValueUtils.isPrimitive(array[0])) {
-                    int i = 0;
                     String[] pkFieldNames = table.getPkFieldNames();
                     if (ValueUtils.isEmpty(pkFieldNames))
                         throw new DbistRuntimeException("Couln't find primary key of table " + table.getName());
+
+                    int i = 0;
                     int pkFieldSize = pkFieldNames.length;
+
                     for (Object item : array) {
                         query.addFilter(pkFieldNames[i++], item);
+
                         if (i == pkFieldSize)
                             break;
                     }
+
                     return query;
                 }
             } else if (condition instanceof List) {
                 if (ValueUtils.isEmpty(condition))
                     throw new IllegalAccessException("Requested pk condition is empty.");
-                @SuppressWarnings("unchecked")
+
                 List<?> list = (List<Object>) condition;
                 if (ValueUtils.isPrimitive(list.get(0))) {
-                    int i = 0;
                     String[] pkFieldNames = table.getPkFieldNames();
                     if (ValueUtils.isEmpty(pkFieldNames))
                         throw new DbistRuntimeException("Couln't find primary key of table " + table.getName());
+
+                    int i = 0;
                     int pkFieldSize = pkFieldNames.length;
                     for (Object item : list) {
                         query.addFilter(pkFieldNames[i++], item);
                         if (i == pkFieldSize)
                             break;
                     }
+
                     return query;
                 }
             }
+
             query = toQuery(table, condition, table.getPkFieldNames());
             return query;
         } finally {
