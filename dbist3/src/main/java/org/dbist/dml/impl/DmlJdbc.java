@@ -84,10 +84,6 @@ import net.sf.common.util.ResourceUtils;
 import net.sf.common.util.SyncCtrlUtils;
 import net.sf.common.util.ValueUtils;
 
-/**
- * @author Steve M. Jung
- * @since 2011. 6. 2. (version 0.0.1)
- */
 public class DmlJdbc extends AbstractDml implements Dml {
 
     /**
@@ -102,9 +98,13 @@ public class DmlJdbc extends AbstractDml implements Dml {
     private static final String COLUMNALIASRULE_UPPERCASE = "uppercase";
     private static final String COLUMNALIASRULE_LOWERCASE = "lowercase";
     private static final String COLUMNALIASRULE_CAMELCASE = "camelcase";
-    private static final List<String> COLUMNALIASRULE_LIST = ValueUtils.toList(COLUMNALIASRULE_DEFAULT, COLUMNALIASRULE_UPPERCASE,
-        COLUMNALIASRULE_LOWERCASE, COLUMNALIASRULE_CAMELCASE);
 
+    private static final List<String> COLUMNALIASRULE_LIST = new ArrayList<String>() {{
+        add(COLUMNALIASRULE_DEFAULT);
+        add(COLUMNALIASRULE_UPPERCASE);
+        add(COLUMNALIASRULE_LOWERCASE);
+        add(COLUMNALIASRULE_CAMELCASE);
+    }};
 
     private boolean isSupported() {
         return queryMapper != null;
