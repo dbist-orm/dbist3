@@ -26,6 +26,7 @@ import org.apache.commons.collections.ComparatorUtils;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
 import org.dbist.util.SqlFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ import org.springframework.util.StringUtils;
 
 import net.sf.common.util.ValueUtils;
 
+@Aspect
 public class SqlAspect {
 
     private static final Logger logger = LoggerFactory.getLogger(SqlAspect.class);

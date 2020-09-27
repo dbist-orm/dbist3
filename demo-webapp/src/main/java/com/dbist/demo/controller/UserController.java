@@ -60,9 +60,13 @@ public class UserController {
         }
         {
             Query query = new Query();
-            dml.select(query);
-        }
+            query.addSelect("id", "password", "name");
+            query.addFilter("name", "like", "1");
+            query.addOrder("id", false);
 
+            List<User> list = dml.selectList(User.class, query);
+            Optional.ofNullable(list).ifPresent(v -> log.debug(v.toString()));
+        }
 
         return null;
     }
