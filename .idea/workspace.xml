@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RunManager">
+    <configuration name="DemoWebappApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+      <module name="com.dbist.demo-webapp.main" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.dbist.demo.DemoWebappApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+</project>
